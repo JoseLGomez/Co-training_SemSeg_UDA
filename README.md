@@ -12,7 +12,7 @@ By Jose L. Gómez, Gabriel Villalonga and Antonio M. López
 Welcome to the repository of our paper "Co-Training for Unsupervised Domain Adaptation of Semantic Segmentation Models". 
 The code uses a modified forked version of the [Detectron2](https://github.com/facebookresearch/detectron2) framework. 
 Inside the tools folder you can find the Co-training, Self-training and others implementations used on the paper to achieve the 
-results reported.
+reported results.
 
 ## Requirements
 
@@ -41,6 +41,7 @@ Note: To rebuild detectron2 that’s built from a local clone, use ```rm -rf bui
 1. Datasets:
 - Download [GTA-5](https://download.visinf.tu-darmstadt.de/data/from_games/)
 - Download [Synscapes](https://synscapes.on.liu.se/download.html).
+- Download [SYNTHIA](https://synthia-dataset.net/downloads/).
 - Download [Cityscapes](https://www.cityscapes-dataset.com/).
 - Download [BDD100K](https://bdd-data.berkeley.edu/).
 - Download [Mapillary Vistas](https://www.cityscapes-dataset.com/).
@@ -148,7 +149,7 @@ OUTPUT_DIR /path/to/save/experiment
 ```
 
 4. Final training step
-- First, you need to generate the final pseudolabels of the target dataset using the next script
+- First, you need to generate the final pseudolabels of the target dataset using the following script
 ```
 CUDA_VISIBLE_DEVICES=0 python sem_seg_cotrainingV3.py 
 --num-gpus 1 
@@ -179,7 +180,7 @@ OUTPUT_DIR /path/to/save/experiment
 ```
 
 ## Evaluation
-You can evaluate any model using the next script in addition with the config file containing the target dataset to evaluate
+You can evaluate any model using the following script in addition with the config file containing the target dataset to evaluate
 ```
 CUDA_VISIBLE_DEVICES=0 python tools/train_net_progress.py 
 --num-gpus 1 
@@ -219,8 +220,8 @@ OUTPUT_DIR /path/to/save/experiment
 
 Detectron2 is released under the [Apache 2.0 license](LICENSE).
 
-## Citation
-Cite our work as follows:
+## Use conditions
+If you use this code, please, cite the following paper:
 
 ```BibTeX
 @Article{Gomez:2023,
@@ -234,14 +235,17 @@ ARTICLE-NUMBER = {621}
 }
 ```
 
+## Funding
+
+This research has been supported by the Spanish Grant Ref. PID2020-115734RB-C21 funded by MCIN/AEI/10.13039/50110001103
+<img src="MICINN_Gob_AEI_1.jpg" width="200" />
+
 ## Acknowledgements
+
+Antonio M. López acknowledges the financial support to his general research activities given by ICREA under the ICREA Academia Program. Jose L. Gómez acknowledges the financial support to perform his Ph.D. given by the grant FPU16/04131. The authors acknowledge the support of the Generalitat de Catalunya CERCA Program and its ACCIO agency to CVC’s general activities.
 
 This project is based on the following open-source projects. We thank their
 authors for making the source code publicly available.
 
 * [Detectron2](https://github.com/facebookresearch/detectron2)
 
-## Funding
-
-The authors acknowledge the support received for this research from the Spanish Grant Ref. PID2020-115734RB-C21 funded by MCIN/AEI/10.13039/50110001103
-![Alt Text](MICINN_Gob_AEI_1.jpg)
