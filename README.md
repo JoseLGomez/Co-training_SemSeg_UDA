@@ -5,6 +5,8 @@ By Jose L. Gómez, Gabriel Villalonga and Antonio M. López
 
 **[[Paper]](https://www.mdpi.com/1424-8220/23/2/621)**
 
+**Abstract:** Semantic image segmentation is a core task for autonomous driving, which is performed by deep models. Since training these models draws to a curse of human-based image labeling, the use of synthetic images with automatically generated labels together with unlabeled real-world images is a promising alternative. This implies addressing an unsupervised domain adaptation (UDA) problem. In this paper, we propose a new co-training procedure for synth-to-real UDA of semantic segmentation models. It performs iterations where the (unlabeled) real-world training images are labeled by intermediate deep models trained with both the (labeled) synthetic images and the real-world ones labeled in previous iterations. More specifically, a self-training stage  provides two domain-adapted models and a model collaboration loop allows the mutual improvement of these two models. The final semantic segmentation labels (pseudo-labels) for the real-world images are provided by these two models. The overall procedure treats the deep models as black boxes and drives their collaboration at the level of pseudo-labeled target images, i.e., neither modifying loss functions is required, nor explicit feature alignment. We test our proposal on standard synthetic and real-world datasets for onboard semantic segmentation. Our procedure shows improvements ranging from approximately 13 to 31 mIoU points over baselines.
+
 ## Introduction
 
 Welcome to the repository of our paper "Co-Training for Unsupervised Domain Adaptation of Semantic Segmentation Models". 
@@ -190,24 +192,21 @@ OUTPUT_DIR /path/to/save/experiment
 
 ## Experimental results [DeeplabV3+]
 
-| Step          | Source         | Target     | mIoU  | Config file                              | Weights |
-|---------------|----------------|------------|-------|------------------------------------------|---------|
-| Baseline      | GTAV           | Cityscapes | 37.86 | configs/gtaV/baseline.yaml               |
-| Baseline + CB | GTAV           | Cityscapes | 42.76 | configs/gtaV/baseline+CB.yaml            |
-| Self-training | GTAV           | Cityscapes | 53.49 | configs/gtaV/self_training.yaml          |
-| Co-training   | GTAV           | Cityscapes | 59.57 | configs/gtaV/final_step.yaml             |
-|---------------|----------------|------------|-------|------------------------------------------|
-| Baseline      | Synscapes      | Cityscapes | 45.98 | configs/synscapes/baseline.yaml          |
-| Self-training | Synscapes      | Cityscapes | 55.34 | configs/synscapes/self_training.yaml     |
-| Co-training   | Synscapes      | Cityscapes | 58.38 | configs/synscapes/final_step.yaml        |
-|---------------|----------------|------------|-------|------------------------------------------|
-| Baseline      | SYNTHIA        | Cityscapes | 39.48 | configs/SYNTHIA/baseline.yaml            |
-| Self-training | SYNTHIA        | Cityscapes | 48.74 | configs/SYNTHIA/self_training.yaml       |
-| Co-training   | SYNTHIA        | Cityscapes | 56.09 | configs/SYNTHIA/final_step.yaml          |
-|---------------|----------------|------------|-------|------------------------------------------|
-| Baseline      | GTAV+Synscapes | Cityscapes | 59.32 | configs/gtaV+synscapes/baseline.yaml     |
-| Self-training | GTAV+Synscapes | Cityscapes | 67.47 | configs/gtaV+synscapes/self_training.yaml|
-| Co-training   | GTAV+Synscapes | Cityscapes | 70.23 | configs/gtaV+synscapes/final_step.yaml   |
+| Step          | Source         | Target     | mIoU  | Config file                              | Weights   |
+|---------------|----------------|------------|-------|------------------------------------------|-----------|
+| Baseline      | GTAV           | Cityscapes | 37.86 | configs/gtaV/baseline.yaml               | [model](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EcYC1FyZgC9IvxStnMNxm0YByc5bs7Dsw4C86qx1I4jK7Q?e=08CHnQ)  |
+| Baseline + CB | GTAV           | Cityscapes | 42.76 | configs/gtaV/baseline+CB.yaml            | [model](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EVmCyaylLn9Htg9KbrJ0j6IB5_JV2txlsHKYy0YCOg4Wsw?e=CUWGGG)  |
+| Self-training | GTAV           | Cityscapes | 53.49 | configs/gtaV/self_training.yaml          | [1](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EeGcU2Cg4aJIgTVQA85U1c4Bo57d5hKYKrH4moXgHqpLaQ?e=aB5cOb)[10](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EUtsuG5D8ZVGjbVx5skgov8B95IxP-k7LmUrGwikK0SB3w?e=5c0YVU)  |
+| Co-training   | GTAV           | Cityscapes | 59.57 | configs/gtaV/final_step.yaml             | [A](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/Edyp7cRYlqNFlISn5UNurgcBKHfLCYETDaylYADc63nd7g?e=tukGIA)[B](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EYFZV0ShFP9Fg-etsG94f1ABPNsk9XUwaRIOjSeuKiD4Fg?e=lMCwD4)[Final](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EXLEJt9oHZhGqWBdbKJqXLABF0cTAcLadw1NbSCGJw01Bw?e=KkJJWA)  |
+| Baseline      | Synscapes      | Cityscapes | 45.98 | configs/synscapes/baseline.yaml          | [model](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EVavfwJ3Vh5PsU8LyEsgCf0Bp2kbHgcp6vs4ojAFAMqIog?e=jFLnYp)  |
+| Self-training | Synscapes      | Cityscapes | 55.34 | configs/synscapes/self_training.yaml     | [10](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EWSUouFEbqhBrwraDjKDmzwBm5g1NB4432_C-HYp-tdA9Q?e=J8H1pu)  |
+| Co-training   | Synscapes      | Cityscapes | 58.38 | configs/synscapes/final_step.yaml        | [A](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EX19oat_XSJDnG0iMOzXcKMB-Tq5fgREZiSpFahonfq7kg?e=kAcH0Q)[B](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EYYGR9vKUolMpok79PZ7_JgBh2NTwYk1t8d97X46_Cq6dA?e=hqtytH)[Final](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EQ7yi63GAKtEnfjZHTfeNy8B2gnNcO-11QN3RWLmCZX-7A?e=lqWSdH)  |
+| Baseline      | SYNTHIA        | Cityscapes | 39.48 | configs/SYNTHIA/baseline.yaml            | [model](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/ERwQujqlHNtGody32teb26MBxh9EQko3KM9YAz_RCXLKMw?e=tpdEVw)  |
+| Self-training | SYNTHIA        | Cityscapes | 48.74 | configs/SYNTHIA/self_training.yaml       | [10](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EYlj5f0QqG1AodT_IbaPaPUBQibhlD8jraVfLWundWLEcA?e=fhpvEu)  |
+| Co-training   | SYNTHIA        | Cityscapes | 56.09 | configs/SYNTHIA/final_step.yaml          | [A](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EccbK__5YvZHpEYtSbdaGhgB1ZTSQ9cOyi-0w27frnOorg?e=Oyf2h6)[B](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EX7kjtoLG_lIqbYONMteVvsBvkIHIfOSHl_sa4MCKZWSug?e=GwCe7W)[Final](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/Ee8VcbUJTBtLiICRuQMrCGoBWeWbfrtlUeyeO3lgWjtinw?e=4pGTzt)  |
+| Baseline      | GTAV+Synscapes | Cityscapes | 59.32 | configs/gtaV+synscapes/baseline.yaml     | [model](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EY3z4dTUVtZAiUQVKnsLYeABnCAuSomtpBLacDlyKOBbJQ?e=YV5jWO)  |
+| Self-training | GTAV+Synscapes | Cityscapes | 67.47 | configs/gtaV+synscapes/self_training.yaml| [1](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EXDxy256b1BFoqzMQGdUydUBkOeZ8WbGKUd0C0db5fQEBQ?e=ZWjb7v)[10](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EWSUouFEbqhBrwraDjKDmzwBm5g1NB4432_C-HYp-tdA9Q?e=VrmyKa)  |
+| Co-training   | GTAV+Synscapes | Cityscapes | 70.23 | configs/gtaV+synscapes/final_step.yaml   | [A](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EaivyfCim4JNsL-MOTjGHfIBBbCWDXtBxp5wDxJe3aLO-g?e=Clo649)[B](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/ERC58x9z2BBFtujiBYI91-cBNxL5rXMYKDyKHMUybjK1ZQ?e=fli3UA)[Final](https://cvcuab-my.sharepoint.com/:u:/g/personal/jlgomez_cvc_uab_cat/EaBie7kXSdtDgiRc8NIElhIB9bMzyNg-Gol6e2f_0UHb6w?e=pcDXKF)  |
 
 ## License
 
