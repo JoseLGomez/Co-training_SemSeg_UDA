@@ -238,7 +238,8 @@ ARTICLE-NUMBER = {621}
 ## Funding
 
 This research has been supported by the Spanish Grant Ref. PID2020-115734RB-C21 funded by MCIN/AEI/10.13039/50110001103
-<img src="MICINN_Gob_AEI_1.jpg" width="200" />
+
+<img src="MICINN_Gob_AEI_1.jpg" width="300" />
 
 ## Acknowledgements
 
