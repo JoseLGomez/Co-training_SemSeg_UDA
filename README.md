@@ -30,9 +30,9 @@ See [installation instructions](https://detectron2.readthedocs.io/tutorials/inst
 0. Installation:
 **Clone** this github repository:
 ```bash
-  git clone https://github.com/X/X.git
-  python -m pip install -e X
-  cd X
+  git clone https://github.com/JoseLGomez/Co-training_SemSeg_UDA.git
+  python -m pip install -e Co-training_SemSeg_UDA
+  cd Co-training_SemSeg_UDA
 ```
 Note: To rebuild detectron2 that’s built from a local clone, use ```rm -rf build/ **/*.so``` to clean the old build first. You often need to rebuild detectron2 after reinstalling PyTorch.
 
