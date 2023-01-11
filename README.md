@@ -219,11 +219,6 @@ OUTPUT_DIR /path/to/save/experiment
 
 Detectron2 is released under the [Apache 2.0 license](LICENSE).
 
-## Funding
-
-The authors acknowledge the support received for this research from the Spanish Grant Ref. PID2020-115734RB-C21 funded by MCIN/AEI/10.13039/50110001103
-![Alt Text](MICINN_Gob_AEI_1.jpg)
-
 ## Citation
 Cite our work as follows:
 
@@ -245,3 +240,8 @@ This project is based on the following open-source projects. We thank their
 authors for making the source code publicly available.
 
 * [Detectron2](https://github.com/facebookresearch/detectron2)
+
+## Funding
+
+The authors acknowledge the support received for this research from the Spanish Grant Ref. PID2020-115734RB-C21 funded by MCIN/AEI/10.13039/50110001103
+![Alt Text](MICINN_Gob_AEI_1.jpg)
