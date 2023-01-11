@@ -1,0 +1,114 @@
+_BASE_: ../Base-DeepLabV3-OS16-Semantic.yaml
+MODEL:
+  WEIGHTS: "detectron2://DeepLab/R-103.pkl"
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.120, 57.375]
+  BACKBONE:
+    NAME: "build_resnet_deeplab_backbone"
+  RESNETS:
+    DEPTH: 101
+    NORM: "BN"
+    OUT_FEATURES: ["res2", "res5"]
+    RES5_MULTI_GRID: [1, 2, 4]
+    STEM_TYPE: "deeplab"
+    STEM_OUT_CHANNELS: 128
+    STRIDE_IN_1X1: False
+  SEM_SEG_HEAD:
+    NAME: "DeepLabV3PlusHead"
+    IN_FEATURES: ["res2", "res5"]
+    PROJECT_FEATURES: ["res2"]
+    PROJECT_CHANNELS: [48]
+    COMMON_STRIDE: 4
+    NORM: "BN"
+    IGNORE_VALUE: 19
+    NUM_CLASSES: 20
+DATASETS:
+  TRAIN_IMG_TXT: /datatmp/Datasets/segmentation/Synscapes/img/translated_rgb.txt
+  TRAIN_GT_TXT: /datatmp/Datasets/segmentation/Synscapes/img/translated_gt.txt
+  TRAIN_IMG_TXT2: /datatmp/Datasets/segmentation/Synscapes/img/translated_rgb.txt
+  TRAIN_GT_TXT2: /datatmp/Datasets/segmentation/Synscapes/img/translated_gt.txt
+  TEST_IMG_TXT: /datatmp/Datasets/segmentation/cityscapes/leftimage8bit_val.txt
+  TEST_GT_TXT: /datatmp/Datasets/segmentation/cityscapes/gtFine_val.txt
+  LABELS: "cityscapes"
+PSEUDOLABELING: 
+  NUMBER: 100 # number of pseudolabels that will be added to the source dataset
+  MODE: "mpt"
+  SORTING: "by_confidence_difference_between_branches" # 'by_confidence_difference_between_branches': 'by_confidence_on_class_demand': 'per_class': sort by num classes on pseudolabel; 'per_void_pixels': sort per num void pixels on pseudolabels; 'cotraining_confidence_score': Sort by score determined by the confidence difference of each class between branches; any other value sort by confidence
+  COLLABORATION: "cotraining"
+  ACCUMULATION: "update_best_score"
+  INIT_TGT_PORT: 0.5
+  MAX_TGT_PORT: 0.7
+  TGT_PORT_STEP: 0.05
+  #INIT_TGT_PORT_B: 0.5
+  #MAX_TGT_PORT_B: 0.6
+  #TGT_PORT_STEP_B: 0.025
+INPUT:
+  FORMAT: "RGB"
+  ACTIVATE_MIN_SIZE_TRAIN: True
+  MIN_SIZE_TRAIN: (512, 768, 1024, 1280, 1536, 1792, 2048)
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 4096
+  MIN_SIZE_TEST: 1024
+  MAX_SIZE_TEST: 2048
+  RESIZED: True
+  RESIZE_SIZE: (1024, 2048)
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+INPUT2:
+  FORMAT: "RGB"
+  ACTIVATE_MIN_SIZE_TRAIN: True
+  MIN_SIZE_TRAIN: (512, 768, 1024, 1280, 1536, 1792, 2048)
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 4096
+  RESIZED: True
+  RESIZE_SIZE: (1024, 2048)
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+INPUT_PSEUDO:
+  FORMAT: "RGB"
+  ACTIVATE_MIN_SIZE_TRAIN: True
+  MIN_SIZE_TRAIN: (512, 768, 1024, 1280, 1536, 1792, 2048)
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 4096
+  RESIZED: True
+  RESIZE_SIZE: (1024, 2048)
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+SOLVER:
+  ALTERNATE_SOURCE_PSEUDOLABELS: True
+  ACTIVATE_CLASSMIX: True
+  CLASSMIX_ON_CLASS_DEMAND: True
+  SOURCE_PSEUDOLABELS_BATCH_RATIO: (1, 3) # ratio sum must match IMS_PER_BATCH, 1st values source batch size, second values target batch size
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.002
+  STEPS: (16000, )
+  MAX_ITER: 8000
+  CHECKPOINT_PERIOD: 8000
+TEST:
+  EVAL_PERIOD: 8000
+OUTPUT_DIR: /data/new/Experiments/jlgomez/cotraining_sem_seg/gta+syns_trans_citys_cotraining_dlV3plus_confidence_5000p_8k_1_3_200_500_lr2e-3_20c_scratch_ensemblessubs_classmixV2_seed100
+AUGMENTATION_A:
+  CUTOUT: False
+  CUTOUT_N_HOLES: (0, 1)
+  CUTOUT_LENGTH: (300, 600)
+  RANDOM_RESIZE: False
+  RESIZE_RANGE: (0.5, 1.5)
+  HFLIP: True
+  HFLIP_PROB: 0.5
+AUGMENTATION_B:
+  CUTOUT: False
+  CUTOUT_N_HOLES: (0, 5)
+  CUTOUT_LENGTH: (100, 300)
+  RANDOM_RESIZE: False
+  RESIZE_RANGE: (0.5, 1.5)
+  HFLIP: True
+  HFLIP_PROB: 0.5

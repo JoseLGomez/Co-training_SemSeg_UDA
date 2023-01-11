@@ -1,0 +1,74 @@
+_BASE_: ../Base-DeepLabV3-OS16-Semantic.yaml
+MODEL:
+  WEIGHTS: "detectron2://DeepLab/R-103.pkl"
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.120, 57.375]
+  BACKBONE:
+    NAME: "build_resnet_deeplab_backbone"
+  RESNETS:
+    DEPTH: 101
+    NORM: "BN"
+    OUT_FEATURES: ["res2", "res5"]
+    RES5_MULTI_GRID: [1, 2, 4]
+    STEM_TYPE: "deeplab"
+    STEM_OUT_CHANNELS: 128
+    STRIDE_IN_1X1: False
+  SEM_SEG_HEAD:
+    NAME: "DeepLabV3PlusHead"
+    IN_FEATURES: ["res2", "res5"]
+    PROJECT_FEATURES: ["res2"]
+    PROJECT_CHANNELS: [48]
+    COMMON_STRIDE: 4
+    NORM: "BN"
+    IGNORE_VALUE: 19
+    NUM_CLASSES: 20
+    VALIDATION_DROPOUT: False
+    ASPP_DROPOUT: 0.5
+DATASETS:
+  TRAIN_IMG_TXT: /datatmp/Datasets/segmentation/Synscapes/img/synscapes+gta_translated_rgb.txt
+  TRAIN_GT_TXT: /datatmp/Datasets/segmentation/Synscapes/img/synscapes+gta_translated_gt.txt
+  TEST_IMG_TXT: /datatmp/Datasets/segmentation/cityscapes/leftimage8bit_val.txt
+  TEST_GT_TXT: /datatmp/Datasets/segmentation/cityscapes/gtFine_val.txt
+  LABELS: "cityscapes"
+PSEUDOLABELING: 
+  NUMBER: 200 # number of pseudolabels that will be added to the source dataset
+  MODE: "mpt" # gt_substraction, mtp_gt_score, mpt_gt_substraction
+  SORTING: "confidence" # 'per_class': sort by num classes on pseudolabel; 'per_void_pixels': sort per num void pixels on pseudolabels; any other value sort by confidence
+  COLLABORATION: "none"
+  ACCUMULATION: "update_best_score" # "update_best_score", "all", None
+INPUT:
+  FORMAT: "RGB"
+  ACTIVATE_MIN_SIZE_TRAIN: True
+  MIN_SIZE_TRAIN: (512, 768, 1024, 1280, 1536, 1792, 2048)
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 4096
+  MIN_SIZE_TEST: 1024
+  MAX_SIZE_TEST: 2048
+  RESIZED: True
+  RESIZE_SIZE: (1024, 2048)
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+SOLVER:
+  ALTERNATE_SOURCE_PSEUDOLABELS: True
+  ACTIVATE_CLASSMIX: True
+  CLASSMIX_ON_CLASS_DEMAND: True
+  SOURCE_PSEUDOLABELS_BATCH_RATIO: (1, 3) # ratio sum must match IMS_PER_BATCH, 1st values source batch size, second values target batch size
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.002
+  STEPS: (8000, )
+  MAX_ITER: 8000
+  CHECKPOINT_PERIOD: 8000
+TEST:
+  EVAL_PERIOD: 8000
+OUTPUT_DIR: /data/new/Experiments/jlgomez/cotraining_sem_seg/syns+gta_translated_selftraining_deeplabV3plus_mpt_confidence_8k_1_3_200_classmix
+AUGMENTATION_A:
+  CUTOUT: False
+  CUTOUT_N_HOLES: (0, 1)
+  CUTOUT_LENGTH: (300, 600)
+  RANDOM_RESIZE: False
+  RESIZE_RANGE: (0.5, 1.5)
+  HFLIP: True
+  HFLIP_PROB: 0.5

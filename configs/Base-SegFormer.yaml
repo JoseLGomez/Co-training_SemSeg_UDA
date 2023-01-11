@@ -1,0 +1,36 @@
+MODEL:
+  META_ARCHITECTURE: "SemanticSegmentor"
+  BACKBONE:
+    NAME: "mit_b0"
+    #FREEZE_AT: 0
+  SEM_SEG_HEAD:
+    NAME: "SegFormerHead"
+    NUM_CLASSES: 19
+    LOSS_TYPE: "CrossEntropyLoss"
+    IN_CHANNELS: [32, 64, 160, 256]
+    IN_INDEX: [0, 1, 2, 3]
+    FEATURE_STRIDES: [4, 8, 16, 32]
+    CHANNELS: 128
+    DROPOUT_RATIO: 0.1
+    DECODER_PARAMS: {embed_dim: 768}
+DATASETS:
+  TRAIN: ("cityscapes_fine_sem_seg_train",)
+  TEST: ("cityscapes_fine_sem_seg_val",)
+SOLVER:
+  BASE_LR: 0.01
+  MAX_ITER: 90000
+  LR_SCHEDULER_NAME: "WarmupPolyLR"
+  IMS_PER_BATCH: 16
+INPUT:
+  MIN_SIZE_TRAIN: (512, 768, 1024, 1280, 1536, 1792, 2048)
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MIN_SIZE_TEST: 1024
+  MAX_SIZE_TRAIN: 4096
+  MAX_SIZE_TEST: 2048
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+DATALOADER:
+  NUM_WORKERS: 10

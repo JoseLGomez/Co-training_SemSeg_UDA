@@ -1,0 +1,23 @@
+MODEL:
+  META_ARCHITECTURE: "SemanticSegmentor"
+  WEIGHTS: "https://download.pytorch.org/models/resnet101-5d3b4d8f.pth"
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.120, 57.375]
+  BACKBONE:
+    NAME: "Res_Deeplab"
+  SEM_SEG_HEAD:
+    NAME: "DeepLabV2Head"
+    IGNORE_VALUE: 19
+    NUM_CLASSES: 20
+INPUT:
+  FORMAT: "RGB"
+  MIN_SIZE_TRAIN: (512, 768, 1024, 1280, 1536, 1792, 2048)
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MIN_SIZE_TEST: 1024
+  MAX_SIZE_TRAIN: 4096
+  MAX_SIZE_TEST: 2048
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
