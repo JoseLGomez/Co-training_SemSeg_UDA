@@ -518,6 +518,7 @@ def colour_label(inference, filename, dataset_name=None):
     legend = draw_legend(inference.shape[1], color_map, classes, n_lines=2)
     pred_colour = np.concatenate((pred_colour, legend))
     Image.fromarray(pred_colour).save(filename)
+    return pred_colour
 
 
 def inference(cfg, model, dataset_name, img_list, output_path):
