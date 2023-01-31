@@ -22,6 +22,7 @@ reported results.
 - Numpy 
 - PIL
 - Scikit-learn
+- Scikit-image
 - Cityscapes scripts included in Detectron2
 See [installation instructions](https://detectron2.readthedocs.io/tutorials/install.html).
 - Hardware: NVIDIA GPU ≥12GB to reproduce the paper results.
