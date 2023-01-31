@@ -21,8 +21,8 @@ reported results.
 - OpenCV
 - Numpy 
 - PIL
+- Scikit-learn
 - Cityscapes scripts included in Detectron2
-- ./tools/packages_list.txt includes all the libraries and versions used to run the code (not all libraries are needed)
 See [installation instructions](https://detectron2.readthedocs.io/tutorials/install.html).
 - Hardware: NVIDIA GPU ≥12GB to reproduce the paper results.
 
