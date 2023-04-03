@@ -1,23 +1,3 @@
-#!/usr/bin/env python
-# Copyright (c) Facebook, Inc. and its affiliates.
-"""
-Detectron2 training script with a plain training loop.
-
-This script reads a given config file and runs the training or evaluation.
-It is an entry point that is able to train standard models in detectron2.
-
-In order to let one script support training of many models,
-this script contains logic that are specific to these built-in models and therefore
-may not be suitable for your own project.
-For example, your research project perhaps only needs a single "evaluator".
-
-Therefore, we recommend you to use detectron2 as a library and take
-this file as an example of how to use the library.
-You may want to write your own script with your datasets and other customizations.
-
-Compared to "train_net.py", this script supports fewer default features.
-It also includes fewer abstraction, therefore is easier to add custom logic.
-"""
 import sys
 import random
 import logging
@@ -39,7 +19,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 import detectron2.data.transforms as T
 import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer, PeriodicCheckpointer
-from detectron2.config import get_cfg, add_hrnet_config
+from detectron2.config import get_cfg
 from detectron2.data import (
     build_detection_test_loader,
     build_detection_train_loader,
@@ -65,11 +45,7 @@ from detectron2.utils.logger import log_every_n_seconds
 from detectron2.projects.deeplab import add_deeplab_config, build_lr_scheduler
 
 logger = logging.getLogger("detectron2")
-DS_RATE = 4
 softmax2d = nn.Softmax2d()
-dict_classes = {0:'Road', 1:'Sidewalk', 2:'Building', 3:'Wall', 4:'Fence', 5:'Pole', 6:'Traffic light', 7:'Traffic sign',
-                8:'Vegetatiom', 9:'Terrain', 10:'Sky', 11:'Person', 12:'Rider', 13:'Car', 14:'Truck', 15:'Bus',
-                16:'Train', 17:'Motorcycle', 18:'Bicycle', 19:'Void'}
 
 def cotraining_argument_parser(parser):
     # Adds cotrainig arguments to the detectron2 base parser
@@ -100,12 +76,12 @@ def cotraining_argument_parser(parser):
         help='Unlabeled dataset name to call dataloader function',
         default=None,
         type=str
-    ) 
+    )
     parser.add_argument(
         '--same_domain',
         help='Set when the unlabeled domain for Data A and Data B is the same (i.e. rgb and mirrored rgb)',
         action='store_true'
-    )    
+    )
     parser.add_argument(
         '--weights_branchA',
         dest='weights_branchA',
@@ -133,7 +109,7 @@ def cotraining_argument_parser(parser):
         help='Number of maximum unlabeled samples',
         default=500,
         type=int
-    ) 
+    )
     parser.add_argument(
         '--samples',
         dest='samples',
@@ -217,6 +193,20 @@ def cotraining_argument_parser(parser):
         help='Use mtp on cotraining ensemble',
         action='store_true'
     )
+    parser.add_argument(
+        '--thres_A',
+        dest='thres_A',
+        help='Thresholds model A computer during co-training (used to generate final pseudolabels manually)',
+        default=None,
+        type=str
+    )
+    parser.add_argument(
+        '--thres_B',
+        dest='thres_B',
+        help='Thresholds model B computer during co-training (used to generate final pseudolabels manually)',
+        default=None,
+        type=str
+    )
     return parser
 
 
@@ -261,6 +251,7 @@ def built_custom_dataset(cfg, image_dir, gt_dir, dataset_name, add_pseudolabels=
                         evaluator_type="generic_sem_seg",
                         ignore_label=255,
                         )
+
 
 def built_inference_dataset(cfg, im_list, dataset_name):
     DatasetCatalog.register(
@@ -310,31 +301,6 @@ def build_sem_seg_train_aug2(input, augmentation, void_label):
                 input.CROP2.SIZE,
                 input.CROP2.SINGLE_CATEGORY_MAX_AREA,
                 void_label))
-    if augmentation.HFLIP:
-        augs.append(T.RandomFlip(prob=augmentation.HFLIP_PROB, horizontal=True, vertical=False))
-    if augmentation.VFLIP:
-        augs.append(T.RandomFlip(prob=augmentation.VFLIP_PROB, horizontal=False, vertical=True))
-    if augmentation.CUTOUT:
-        augs.append(T.CutOutPolicy(augmentation.CUTOUT_N_HOLES, augmentation.CUTOUT_LENGTH))
-    if augmentation.RANDOM_RESIZE:
-        augs.append(T.TrainScalePolicy(augmentation.RESIZE_RANGE))
-    return augs
-
-
-def build_sem_seg_pseudolabels_aug(input, augmentation, void_label):
-    augs = []
-    if input.RESIZED:
-        augs.append(T.Resize(input.RESIZE_SIZE))
-    if input.ACTIVATE_MIN_SIZE_TRAIN:
-        augs.append(T.ResizeShortestEdge(
-            input.MIN_SIZE_TRAIN, input.MAX_SIZE_TRAIN, input.MIN_SIZE_TRAIN_SAMPLING))
-    if input.CROP.ENABLED:
-        augs.append(T.RandomCrop_CategoryAreaConstraint(
-                input.CROP.TYPE,
-                input.CROP.SIZE,
-                input.CROP.SINGLE_CATEGORY_MAX_AREA,
-                void_label,
-                input.CROP.UPPER_MARGIN))
     if augmentation.HFLIP:
         augs.append(T.RandomFlip(prob=augmentation.HFLIP_PROB, horizontal=True, vertical=False))
     if augmentation.VFLIP:
@@ -417,17 +383,6 @@ def inference_context(model):
     model.train(training_mode)
 
 
-def heatmap2d(heatmap, class_name, save_path):
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    fig.suptitle('Heatmap class %s' % (class_name))
-    plt.imshow(heatmap, cmap='viridis')
-    plt.colorbar()
-    plt.show()
-    fig.savefig(os.path.join(save_path,'heatmap_class_%s.png' % (class_name)))
-    fig.close()
-
-
 def inference_on_imlist(cfg, model, weights, dataset_name, prior=None):
     # Following the same detectron2.evaluation.inference_on_dataset function
     DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).load(weights)
@@ -486,13 +441,6 @@ def inference_on_imlist(cfg, model, weights, dataset_name, prior=None):
                 )
     return outputs
 
-def colour_label(inference, filename):
-    pred_colour = 255 * np.ones([inference.shape[0],inference.shape[1],3], dtype=np.uint8)
-    for train_id, label in trainId2label.items():
-        pred_colour[(inference == train_id),0] = label.color[0]
-        pred_colour[(inference == train_id),1] = label.color[1]
-        pred_colour[(inference == train_id),2] = label.color[2]
-    Image.fromarray(pred_colour).save(filename)  
 
 def ensemble_on_imlist_and_save(cfg, modelA, modelB, weightsA, weightsB, dataset_name, img_list, save_dir,
                                 evaluation=True, mask_file=None, thres=None):
@@ -587,8 +535,8 @@ def ensemble_on_imlist_and_save(cfg, modelA, modelB, weightsA, weightsB, dataset
         print_txt_format(results, '-', '-', save_dir, 'Final_ensemble')
 
 
-def do_train(cfg, input_cfg, augmentation_cfg, pseudo_cfg, model, weights, train_dataset_name, test_dataset_name, model_id, save_checkpoints_path, epoch,
-             cls_thresh=None, resume=False, dataset_pseudolabels=None):
+def do_train(cfg, input_cfg, augmentation_cfg, pseudo_cfg, model, weights, train_dataset_name, test_dataset_name,
+             model_id, save_checkpoints_path, epoch, cls_thresh=None, resume=False, dataset_pseudolabels=None):
     model.train()
     model.apply_postprocess = True
     optimizer = build_optimizer(cfg, model)
@@ -827,7 +775,6 @@ def setup(args):
     """
     cfg = get_cfg()
     add_deeplab_config(cfg)
-    add_hrnet_config(cfg)
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     if args.unlabeled_dataset_A is not None:
@@ -839,12 +786,13 @@ def setup(args):
     if args.weights_branchB is not None:
         cfg.MODEL.WEIGHTS_BRANCH_B = args.weights_branchB
     if args.max_unlabeled_samples is not None:
-        cfg.DATASETS.MAX_UNLABELED_SAMPLES = args.max_unlabeled_samples 
+        cfg.DATASETS.MAX_UNLABELED_SAMPLES = args.max_unlabeled_samples
     #cfg.freeze()
     default_setup(
         cfg, args
     )
     return cfg
+
 
 def get_unlabeled_data(unlabeled_dataset, step_inc, seed, samples):
     with open(unlabeled_dataset,'r') as f:
@@ -962,7 +910,6 @@ def find_font_size(max_width, classes, font_file, max_font_size=100):
 # Draw class legend in an image
 def draw_legend(w, color_map, classes, n_lines=3, txt_color=(255, 255, 255),
                 font_file="Cicle_Gordita.ttf"):
-
     # Compute legend sizes
     n_classes = len(color_map)
     n_classes_per_line = int(math.ceil(float(n_classes) / n_lines))
@@ -1054,7 +1001,7 @@ def merge_txts_and_save(new_txt, txt1, txt2=None):
     return new_txt
 
 
-def update_best_score_txts_and_save(accum_scores_txt, accum_images_txt, accum_labels_txt, new_scores_txt, 
+def update_best_score_txts_and_save(accum_scores_txt, accum_images_txt, accum_labels_txt, new_scores_txt,
                                     new_images_txt, new_labels_txt, save_img_txt, save_labels_txt, save_scores_txt, sorting_method):
     with open(accum_scores_txt,'r') as f:
         accum_scores = [line.rstrip().split(' ') for line in f.readlines()]
@@ -1072,7 +1019,7 @@ def update_best_score_txts_and_save(accum_scores_txt, accum_images_txt, accum_la
     # Check for repeated images
     for idx, score in enumerate(new_scores_txt):
         for idx2, score2 in enumerate(accum_scores):
-            if score[0] == score2[0]: 
+            if score[0] == score2[0]:
                 # Depending of the sorting method we use scores or number of void pixel to update
                 if sorting_method == 'per_class' or sorting_method == 'per_void_pixels':
                     check = score[2] < score2[2]
@@ -1134,7 +1081,7 @@ def sorting_scores(scoresA, scoresB, sorting_method, num_classes, info_inference
         sorted_idxB = np.lexsort((scoresB[:,-1],np.count_nonzero(scoresB[:,num_classes:-2], axis=1)))[::-1]
     elif sorting_method == 'per_void_pixels':
         # Sorting by number of void pixels (lower to higher)
-        sorted_idxA = np.argsort(scoresA[:,-2]) 
+        sorted_idxA = np.argsort(scoresA[:,-2])
         sorted_idxB = np.argsort(scoresB[:,-2])
     elif sorting_method == 'cotraining_confidence_score':
         # Sorting by score determined by the confidence difference of each class between branches
@@ -1175,6 +1122,7 @@ def sorting_scores(scoresA, scoresB, sorting_method, num_classes, info_inference
         sorted_idxB = np.concatenate((np.delete(sorted_idxB, idx), sorted_idxB[idx]), axis=0)
     return sorted_idxA, sorted_idxB
 
+
 def get_data(data_list):
     with open(data_list,'r') as f:
         im_list = [line.rstrip().split(' ') for line in f.readlines()]
@@ -1192,6 +1140,8 @@ def compute_statistics(labels, dataset=None, inference_mode=False, min_pixels=19
         if train_id >= 0:
             categories[train_id] = label[0]
             summary[train_id] = []
+    summary[19] = []
+    categories[19] = 'Void'
     for i in range(len(dataset)):
         if inference_mode:
             inference = labels[i]
@@ -1216,72 +1166,6 @@ def compute_statistics(labels, dataset=None, inference_mode=False, min_pixels=19
     logger.info("Total images: %d" % (len(dataset)))
     return info
 
-
-def compute_less_confident_source_subset(info_source, cls_thresh, num_samples, img_dataset, gt_dataset, outdir, num_less_conf_classes=3):
-    idxsort_thres = np.argsort(cls_thresh) #exclude class void
-    idx_list = []
-    idx = 0
-    while (len(np.unique(idx_list)) < num_samples and len(idxsort_thres) > idx):
-        if str(idxsort_thres[idx]) not in info_source["summary"].keys():
-            idx += 1
-            continue
-        img_id_list = np.asarray(info_source["summary"][str(idxsort_thres[idx])])
-        if len(img_id_list) == 0 or cls_thresh[idx] == 0:
-            idx += 1
-            continue
-        if len(img_id_list) >= int(num_samples/num_less_conf_classes):
-            np.random.shuffle(img_id_list)
-            idx_list.extend(img_id_list[:int(num_samples/num_less_conf_classes)])
-        else:
-            idx_list.extend(img_id_list)
-        idx += 1
-    idx_list = np.unique(idx_list)[:num_samples]
-    img_data = get_data(img_dataset)
-    gt_data = get_data(gt_dataset)
-    assert len(gt_data) == len(img_data)
-    with open(os.path.join(outdir, 'source_img_selected.txt'),'w') as img_file:
-        with open(os.path.join(outdir, 'source_gt_selected.txt'),'w') as gt_file:
-            for idx in idx_list:
-                gt_file.write(gt_data[idx][0] + '\n')
-                img_file.write(img_data[idx][0] + '\n')
-    return os.path.join(outdir, 'source_img_selected.txt'), os.path.join(outdir, 'source_gt_selected.txt')
-
-
-def filter_abnormal_pseudolabels(info_inference, pseudolabels):
-    idx_to_remove = []
-    for idx, pseudolabel in enumerate(pseudolabels):
-        # Sidewalk vs road check - More sidewalk than road
-        if 0 in info_inference["images"][idx]["classes"] and 1 in info_inference["images"][idx]["classes"]:
-            if info_inference["images"][idx]["pixels_perc"][1] - info_inference["images"][idx]["pixels_perc"][0] > 0.10:
-                # Sidewalk % too large in comparison to road: remove entry
-                idx_to_remove.append(idx)
-                continue
-        # Terrain vs road check - More Terrain than road
-        if 0 in info_inference["images"][idx]["classes"] and 9 in info_inference["images"][idx]["classes"]:
-            #check position of class terrain
-            terrain = info_inference["images"][idx]["classes"].index(9)
-            if info_inference["images"][idx]["pixels_perc"][terrain] - info_inference["images"][idx]["pixels_perc"][0] > 0.10:
-                # Terrain % too large in comparison to road: remove entry
-                idx_to_remove.append(idx)
-                continue
-    return idx_to_remove
-
-def remove_indexes(idx_to_remove, info_inference, pseudolabels, scores, pseudolabels_not_filtered):
-    for idx in sorted(idx_to_remove, reverse=True):
-        del pseudolabels[idx]
-        del scores[idx]
-        del pseudolabels_not_filtered[idx]
-        del info_inference["images"][idx]
-        for cls in range(len(info_inference["summary"])):
-            if idx in info_inference["summary"][cls]:
-                position = info_inference["summary"][cls].index(idx)
-                info_inference["summary"][cls].remove(idx)
-                for i in range(position,len(info_inference["summary"][cls])):
-                    info_inference["summary"][cls][i] -= 1
-            else:
-                for i in range(len(info_inference["summary"][cls])):
-                    if info_inference["summary"][cls][i] > idx:
-                        info_inference["summary"][cls][i] -= 1
 
 def compute_ensembles(cfg, pseudolabels_A, pseudolabels_B, mode='+'):
     logger.info("Computing ensembling of pseudolabels")
@@ -1390,7 +1274,7 @@ def recompute_pseudolabels(cfg, model_name, model, weights_inference_branch, epo
 
 def main(args):
     cfg = setup(args)
-    continue_epoch = args.continue_epoch 
+    continue_epoch = args.continue_epoch
     accumulated_selection_imgA = []
     accumulated_selection_pseudoA = []
     accumulated_selection_imgB = []
@@ -1402,50 +1286,49 @@ def main(args):
     weights_train_branchA = cfg.MODEL.WEIGHTS_BRANCH_A
     weights_inference_branchB = cfg.MODEL.WEIGHTS_BRANCH_B
     weights_train_branchB = cfg.MODEL.WEIGHTS_BRANCH_B
+    tgt_portion = cfg.PSEUDOLABELING.INIT_TGT_PORT
+    if type(tgt_portion) == list:
+        tgt_portion = np.asarray(tgt_portion)
+        max_list_tgt = tgt_portion + cfg.PSEUDOLABELING.MAX_TGT_PORT
+    if cfg.PSEUDOLABELING.INIT_TGT_PORT_B is not None:
+        tgt_portion_B = cfg.PSEUDOLABELING.INIT_TGT_PORT_B
+        if type(tgt_portion_B) == list:
+            tgt_portion_B = np.asarray(cfg.PSEUDOLABELING.INIT_TGT_PORT_B)
+            tgt_portion_B = np.asarray(tgt_portion_B)
+            max_list_tgt_B = tgt_portion_B + cfg.PSEUDOLABELING.MAX_TGT_PORT_B
+    else:
+        tgt_portion_B = tgt_portion
+        if type(tgt_portion) == list:
+            max_list_tgt_B = max_list_tgt
+    # Set initial scores to surpass during an epoch to propagate weghts to the next one
+    source_img_datasetA = cfg.DATASETS.TRAIN_IMG_TXT
+    source_gt_datasetA = cfg.DATASETS.TRAIN_GT_TXT
+    if cfg.DATASETS.TRAIN_IMG_TXT2 is not None:
+        source_img_datasetB = cfg.DATASETS.TRAIN_IMG_TXT2
+    else:
+        source_img_datasetB = cfg.DATASETS.TRAIN_IMG_TXT
+    if cfg.DATASETS.TRAIN_GT_TXT2 is not None:
+        source_gt_datasetB = cfg.DATASETS.TRAIN_GT_TXT2
+    else:
+        source_gt_datasetB = cfg.DATASETS.TRAIN_GT_TXT
+    # Build test dataset
+    built_custom_dataset(cfg, cfg.DATASETS.TEST_IMG_TXT, cfg.DATASETS.TEST_GT_TXT, cfg.DATASETS.TEST_NAME, test=True)
+
+    # set a seed for the unlabeled data selection
+    if args.seed is not None:
+        seed = args.seed
+    else:
+        seed = random.randrange(sys.maxsize)
+
+    if args.prior_file is not None:
+        source_priors = np.load(args.prior_file)
+    else:
+        source_priors = None
+    prior_thres=0.1
+    prior_relax=0.05
 
     # Start co-training
     if not args.no_training:
-        tgt_portion = cfg.PSEUDOLABELING.INIT_TGT_PORT
-        if type(tgt_portion) == list:
-            tgt_portion = np.asarray(tgt_portion)
-            max_list_tgt = tgt_portion + cfg.PSEUDOLABELING.MAX_TGT_PORT
-        if cfg.PSEUDOLABELING.INIT_TGT_PORT_B is not None:
-            tgt_portion_B = cfg.PSEUDOLABELING.INIT_TGT_PORT_B
-            if type(tgt_portion_B) == list:
-                tgt_portion_B = np.asarray(cfg.PSEUDOLABELING.INIT_TGT_PORT_B)
-                tgt_portion_B = np.asarray(tgt_portion_B)
-                max_list_tgt_B = tgt_portion_B + cfg.PSEUDOLABELING.MAX_TGT_PORT_B
-        else:
-            tgt_portion_B = tgt_portion
-            if type(tgt_portion) == list:
-                max_list_tgt_B = max_list_tgt
-        # Set initial scores to surpass during an epoch to propagate weghts to the next one
-        source_img_datasetA = cfg.DATASETS.TRAIN_IMG_TXT
-        source_gt_datasetA = cfg.DATASETS.TRAIN_GT_TXT
-        if cfg.DATASETS.TRAIN_IMG_TXT2 is not None:
-            source_img_datasetB = cfg.DATASETS.TRAIN_IMG_TXT2
-        else:
-            source_img_datasetB = cfg.DATASETS.TRAIN_IMG_TXT
-        if cfg.DATASETS.TRAIN_GT_TXT2 is not None:
-            source_gt_datasetB = cfg.DATASETS.TRAIN_GT_TXT2
-        else:
-            source_gt_datasetB = cfg.DATASETS.TRAIN_GT_TXT
-        # Build test dataset
-        built_custom_dataset(cfg, cfg.DATASETS.TEST_IMG_TXT, cfg.DATASETS.TEST_GT_TXT, cfg.DATASETS.TEST_NAME, test=True)
-
-        # set a seed for the unlabeled data selection
-        if args.seed is not None:
-            seed = args.seed
-        else:
-            seed = random.randrange(sys.maxsize)
-
-        if args.prior_file is not None:
-            source_priors = np.load(args.prior_file)
-        else:
-            source_priors = None
-        prior_thres=0.1
-        prior_relax=0.05
-
         for epoch in range(args.continue_epoch,args.epochs):
             if continue_epoch > 0:
                 weights_inference_branchA = os.path.join(cfg.OUTPUT_DIR,'model_A',str(epoch-1),'checkpoints/model_final.pth')
@@ -1564,7 +1447,7 @@ def main(args):
             if "cotraining" in collaboration.lower():
                 # Order pseudolabels by confidence lower to higher and asign the less n confident to the other model
                 sorted_idxA, sorted_idxB = sorting_scores(scores_listA, scores_listB, cfg.PSEUDOLABELING.SORTING, cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES, info_inference_A, info_inference_B, cls_threshA, cls_threshB)
-                if "self" in collaboration.lower():               
+                if "self" in collaboration.lower():
                     sorted_scores_listA = np.concatenate((sorted_scores_listA[:int(num_selected/2)], scores_listB[sorted_idxB][:int(num_selected/2)]), axis=0)
                     sorted_pseudolabels_A = np.concatenate((sorted_pseudolabels_A[:int(num_selected/2)], pseudolabels_B[sorted_idxB][:int(num_selected/2)]), axis=0)
                     sorted_unlabeled_datasetA = np.concatenate((sorted_unlabeled_datasetA[:int(num_selected/2)], unlabeled_datasetA[sorted_idxB][:int(num_selected/2)]), axis=0)
@@ -1603,9 +1486,9 @@ def main(args):
             gc.collect()
 
             # select candidates and save them to add them to the source data
-            images_txt_A, psedolabels_txt_A, filenames_and_scoresA = save_pseudolabels(sorted_unlabeled_datasetA, sorted_pseudolabels_A, sorted_scores_listA, pseudolabels_path_model_A, 
+            images_txt_A, psedolabels_txt_A, filenames_and_scoresA = save_pseudolabels(sorted_unlabeled_datasetA, sorted_pseudolabels_A, sorted_scores_listA, pseudolabels_path_model_A,
                 coloured_pseudolabels_path_model_A, sorted_pseudolabels_A_not_filtered, coloured_pseudolabels_not_filtered_path_model_A)
-            images_txt_B, psedolabels_txt_B, filenames_and_scoresB = save_pseudolabels(sorted_unlabeled_datasetB, sorted_pseudolabels_B, sorted_scores_listB, pseudolabels_path_model_B, 
+            images_txt_B, psedolabels_txt_B, filenames_and_scoresB = save_pseudolabels(sorted_unlabeled_datasetB, sorted_pseudolabels_B, sorted_scores_listB, pseudolabels_path_model_B,
                 coloured_pseudolabels_path_model_B, sorted_pseudolabels_B_not_filtered, coloured_pseudolabels_not_filtered_path_model_B)
 
             # free memory
@@ -1630,23 +1513,23 @@ def main(args):
                                                                         accumulated_selection_pseudoA, psedolabels_txt_A)
                     accumulated_scores_A = merge_txts_and_save(os.path.join(dataset_A_path,'filenames_and_scores.txt'),
                                                                         accumulated_scores_A, filenames_and_scoresA)
-                    accumulated_selection_imgB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_img.txt'), 
+                    accumulated_selection_imgB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_img.txt'),
                                                                         accumulated_selection_imgB, images_txt_B)
-                    accumulated_selection_pseudoB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_pseudolabels.txt'), 
+                    accumulated_selection_pseudoB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_pseudolabels.txt'),
                                                                         accumulated_selection_pseudoB, psedolabels_txt_B)
-                    accumulated_scores_B = merge_txts_and_save(os.path.join(dataset_B_path,'filenames_and_scores.txt'), 
+                    accumulated_scores_B = merge_txts_and_save(os.path.join(dataset_B_path,'filenames_and_scores.txt'),
                                                                         accumulated_scores_B, filenames_and_scoresB)
                 elif accumulation_mode.lower() == 'update_best_score':
                     accumulated_selection_imgA, accumulated_selection_pseudoA, accumulated_scores_A = update_best_score_txts_and_save(
-                                                    accumulated_scores_A, accumulated_selection_imgA, accumulated_selection_pseudoA, 
-                                                    filenames_and_scoresA, images_txt_A, psedolabels_txt_A, 
-                                                    os.path.join(dataset_A_path,'dataset_img.txt'), 
+                                                    accumulated_scores_A, accumulated_selection_imgA, accumulated_selection_pseudoA,
+                                                    filenames_and_scoresA, images_txt_A, psedolabels_txt_A,
+                                                    os.path.join(dataset_A_path,'dataset_img.txt'),
                                                     os.path.join(dataset_A_path,'dataset_pseudolabels.txt'),
                                                     os.path.join(dataset_A_path,'filenames_and_scores.txt'), cfg.PSEUDOLABELING.SORTING)
                     accumulated_selection_imgB, accumulated_selection_pseudoB, accumulated_scores_B = update_best_score_txts_and_save(
-                                                    accumulated_scores_B, accumulated_selection_imgB, accumulated_selection_pseudoB, 
-                                                    filenames_and_scoresB, images_txt_B, psedolabels_txt_B, 
-                                                    os.path.join(dataset_B_path,'dataset_img.txt'), 
+                                                    accumulated_scores_B, accumulated_selection_imgB, accumulated_selection_pseudoB,
+                                                    filenames_and_scoresB, images_txt_B, psedolabels_txt_B,
+                                                    os.path.join(dataset_B_path,'dataset_img.txt'),
                                                     os.path.join(dataset_B_path,'dataset_pseudolabels.txt'),
                                                     os.path.join(dataset_B_path,'filenames_and_scores.txt'), cfg.PSEUDOLABELING.SORTING)
             else:
@@ -1657,12 +1540,16 @@ def main(args):
                                                                         psedolabels_txt_A)
                 accumulated_scores_A = merge_txts_and_save(os.path.join(dataset_A_path,'filenames_and_scores.txt'),
                                                                         filenames_and_scoresA)
-                accumulated_selection_imgB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_img.txt'), 
+                accumulated_selection_imgB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_img.txt'),
                                                                         images_txt_B)
-                accumulated_selection_pseudoB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_pseudolabels.txt'), 
+                accumulated_selection_pseudoB = merge_txts_and_save(os.path.join(dataset_B_path,'dataset_pseudolabels.txt'),
                                                                         psedolabels_txt_B)
                 accumulated_scores_B = merge_txts_and_save(os.path.join(dataset_B_path,'filenames_and_scores.txt'),
                                                                         filenames_and_scoresB)
+
+            # Save thresholding files
+            np.save(os.path.join(cfg.OUTPUT_DIR,'model_A',str(epoch),'thresholds.npy'), cls_threshA)
+            np.save(os.path.join(cfg.OUTPUT_DIR,'model_B',str(epoch),'thresholds.npy'), cls_threshB)
 
             total_time = time.perf_counter() - start_time
             logger.info("Accumulation done in {:.2f} s".format(total_time))
@@ -1672,41 +1559,23 @@ def main(args):
             dataset_B_source = cfg.DATASETS.TRAIN_NAME + '_B_source' + str(epoch)
             dataset_B_target = cfg.DATASETS.TRAIN_NAME + '_B_target' + str(epoch)
 
-            if cfg.SOLVER.ALTERNATE_SOURCE_PSEUDOLABELS:
-                # create one dataloader for the source data and another for target pseudolabels
-                built_custom_dataset(cfg, source_img_datasetA, source_gt_datasetA, dataset_A_source)
-                built_custom_dataset(cfg, accumulated_selection_imgA, accumulated_selection_pseudoA, dataset_A_target)
-                # Train model A
-                logger.info("Training Model A")
-                do_train(cfg, cfg.INPUT, cfg.AUGMENTATION_A, cfg.INPUT_PSEUDO, model, weights_train_branchA, dataset_A_source, cfg.DATASETS.TEST_NAME,'a', checkpoints_A_path, epoch, cls_threshA,
-                                     resume=False, dataset_pseudolabels=dataset_A_target)
+            # Alternate datasets on batch time
+            # create one dataloader for the source data and another for target pseudolabels
+            built_custom_dataset(cfg, source_img_datasetA, source_gt_datasetA, dataset_A_source)
+            built_custom_dataset(cfg, accumulated_selection_imgA, accumulated_selection_pseudoA, dataset_A_target)
+            # Train model A
+            logger.info("Training Model A")
+            do_train(cfg, cfg.INPUT, cfg.AUGMENTATION_A, cfg.INPUT_PSEUDO, model, weights_train_branchA, dataset_A_source, cfg.DATASETS.TEST_NAME,'a', checkpoints_A_path, epoch, cls_threshA,
+                                 resume=False, dataset_pseudolabels=dataset_A_target)
 
-                # create dataloader adding psedolabels to source dataset
-                built_custom_dataset(cfg, source_img_datasetB, source_gt_datasetB, dataset_B_source)
-                built_custom_dataset(cfg, accumulated_selection_imgB, accumulated_selection_pseudoB, dataset_B_target)
+            # create dataloader adding psedolabels to source dataset
+            built_custom_dataset(cfg, source_img_datasetB, source_gt_datasetB, dataset_B_source)
+            built_custom_dataset(cfg, accumulated_selection_imgB, accumulated_selection_pseudoB, dataset_B_target)
 
-                # Train model B
-                logger.info("Training Model B")
-                do_train(cfg, cfg.INPUT2, cfg.AUGMENTATION_B, cfg.INPUT_PSEUDO, model, weights_train_branchB, dataset_B_source, cfg.DATASETS.TEST_NAME,'b', checkpoints_B_path, epoch, cls_threshB,
-                                     resume=False, dataset_pseudolabels=dataset_B_target)
-
-            else:
-                # create dataloader adding psedolabels to source dataset
-                built_custom_dataset(cfg, source_img_datasetA, source_gt_datasetA, 
-                                                       dataset_A_source, True, accumulated_selection_imgA, accumulated_selection_pseudoA)
-                # Train model A
-                logger.info("Training Model A")
-                do_train(cfg, cfg.INPUT, cfg.AUGMENTATION_A, cfg.INPUT_PSEUDO, model, weights_train_branchA, dataset_A_source, cfg.DATASETS.TEST_NAME,'a', checkpoints_A_path, epoch, args.continue_epoch,
-                                     resume=False)
-
-                # create dataloader adding psedolabels to source dataset
-                built_custom_dataset(cfg, source_img_datasetB, source_gt_datasetB, 
-                                                       dataset_B_source, True, accumulated_selection_imgB, accumulated_selection_pseudoB)
-
-                # Train model B
-                logger.info("Training Model B")
-                do_train(cfg, cfg.INPUT2, cfg.AUGMENTATION_B, cfg.INPUT_PSEUDO, model, weights_train_branchB, dataset_B_source, cfg.DATASETS.TEST_NAME,'b', checkpoints_B_path, epoch, args.continue_epoch,
-                                     resume=False)
+            # Train model B
+            logger.info("Training Model B")
+            do_train(cfg, cfg.INPUT2, cfg.AUGMENTATION_B, cfg.INPUT_PSEUDO, model, weights_train_branchB, dataset_B_source, cfg.DATASETS.TEST_NAME,'b', checkpoints_B_path, epoch, cls_threshB,
+                                 resume=False, dataset_pseudolabels=dataset_B_target)
 
             # refresh weight file pointers after iteration for initial inference if there is improvement
             # The model for the next inference and training cycle is the last one obtained
@@ -1727,7 +1596,6 @@ def main(args):
                 recompute_pseudolabels(cfg, 'model_B', model, weights_inference_branchB, epoch, accumulated_selection_imgB,
                                        accumulated_selection_pseudoB, dataset_B_target, tgt_portion_B, source_priors, prior_thres,
                                        accumulated_scores_B, dataset_B_path)
-
 
             # Update thesholdings
             if type(tgt_portion) == np.ndarray:
@@ -1765,14 +1633,16 @@ def main(args):
         ensembles_folder = os.path.join(cfg.OUTPUT_DIR,'final_ensemble')
         create_folder(ensembles_folder)
         modelA = build_model(cfg)
-        modelB = build_model(cfg)    
+        modelB = build_model(cfg)
         dataset_name = 'final_ensemble'
         inference_list = get_data(cfg.DATASETS.TEST_IMG_TXT)
         built_custom_dataset(cfg, cfg.DATASETS.TEST_IMG_TXT, cfg.DATASETS.TEST_GT_TXT, dataset_name)
         if args.mpt_ensemble:
             if args.no_training:
-                thresA = np.asarray(cfg.PSEUDOLABELING.INIT_TGT_PORT)
-                thresB = np.asarray(cfg.PSEUDOLABELING.INIT_TGT_PORT_B)
+                thresA = np.load(args.thres_A)
+                thresB = np.load(args.thres_B)
+                print(thresA)
+                print(thresB)
                 cls_thres = np.where(thresA <= thresB, thresA,
                                        thresB)
             else:
@@ -1781,8 +1651,6 @@ def main(args):
             ensemble_on_imlist_and_save(cfg, modelA, modelB, weights_inference_branchA, weights_inference_branchB, dataset_name, inference_list, ensembles_folder, evaluation=True, mask_file=args.mask_file, thres=cls_thres)
         else:
             ensemble_on_imlist_and_save(cfg, modelA, modelB, weights_inference_branchA, weights_inference_branchB, dataset_name, inference_list, ensembles_folder, evaluation=True)
-
-
 
 
 if __name__ == "__main__":
