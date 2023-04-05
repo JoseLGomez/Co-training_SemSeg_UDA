@@ -154,11 +154,12 @@ OUTPUT_DIR /path/to/save/experiment
 ```
 CUDA_VISIBLE_DEVICES=0 python sem_seg_cotrainingV3.py 
 --num-gpus 1 
---config-file ../configs/sem_seg_cotraining/cotraining/sem_seg_cotraining_deeplabV3plus_gta+synscapes_translated_bdd.yaml 
---unlabeled_dataset_A /data/121-1/Datasets/segmentation/bdd100k/train_bdd10k_subset_clean_rgb.txt 
+--config-file /path/to/config/file.yaml
 --same_domain 
---weights_branchA /data/121-2/Experiments/jlgomez/cotraining_sem_seg/Cotraining_bdd_V3plus_S+G_Best_confidence_MPT0.9_0.5_tgt0.5_200_8k_batch4_seed100_maskfile_ClassMixV2_self0_9/model_A/4/checkpoints/model_final.pth 
---weights_branchB /data/121-2/Experiments/jlgomez/cotraining_sem_seg/Cotraining_bdd_V3plus_S+G_Best_confidence_MPT0.9_0.5_tgt0.5_200_8k_batch4_seed100_maskfile_ClassMixV2_self0_9/model_B/4/checkpoints/model_final.pth 
+--weights_branchA /path/to/self-training/0/weights.pth 
+--weights_branchB /path/to/self-training/9/weights.pth
+--thres_A /co-training/exp/path//model_A/4/thresholds.npy
+--thres_B /co-training/exp/path//model_B/4/thresholds.npy
 --unlabeled_dataset_A_name dataset_A 
 --unlabeled_dataset_B_name dataset_B 
 --max_unlabeled_samples 500
@@ -167,9 +168,12 @@ CUDA_VISIBLE_DEVICES=0 python sem_seg_cotrainingV3.py
 --ensembles 
 --mpt_ensemble 
 --no_training 
-OUTPUT_DIR /path/to/save/experiment
+OUTPUT_DIR /path/to/save/paseudo-labels
 DATASETS.TEST_IMG_TXT /path/to/target/training/set/images.txt
+
 ```
+Note: in ```/path/to/save/paseudo-labels``` you can find the predictions and the colour version to visualize. ```image_list.txt``` contains the txts path to the pseudolabels, to be used directly to train on the next step 
+
 - Next, use the script of step 1 with the config file set to train simultaneously in batch time source data and 
 pseudolabels ```configs/X/final_step.yaml```:
 ```

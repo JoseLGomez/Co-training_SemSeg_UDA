@@ -510,7 +510,7 @@ def ensemble_on_imlist_and_save(cfg, modelA, modelB, weightsA, weightsB, dataset
                     ensemble.resize((cfg.INPUT.VAL_RESIZE_SIZE[1], cfg.INPUT.VAL_RESIZE_SIZE[0]))
                 ensemble.save(os.path.join(save_dir,'predictions',name + '.png'))
                 colour_label(amax_output, os.path.join(save_dir,'colour_predictions',name + '_colour.png'))
-                f.write(os.path.join(save_dir,name + '.png') + '\n')
+                f.write(os.path.join(save_dir,'predictions',name + '.png') + '\n')
                 # np.save(os.path.join(save_dir,name + '.npy'), conf)
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
