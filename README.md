@@ -121,10 +121,10 @@ CUDA_VISIBLE_DEVICES=0 python tools/sem_seg_selftraining.py
 --num-epochs 10 
 --seed 100 
 --recompute_all_pseudolabels
---mask_file /path_to_mask/mask.png
+--mask_file /tools/ego_vehicle_mask.png
 OUTPUT_DIR /path/to/save/experiment
 ```
-Note: ```--mask_file``` is optional and allows you to apply a mask on the pseudo-label generation to set some parts to void directly. The mask needs to be binary with values [0, 1] or [0, 255].
+Note: ```--mask_file``` is optional and allows you to apply a mask on the pseudo-label generation to set some parts to void directly. The mask needs to be binary with values [0, 1] or [0, 255]. In our case, we apply a mask on Cityscapes because the ego vehicle is always partially visible in the same position and setting this information to void directly remove noise.
 
 3. Co-training step
 Co-training step specified in the paper is done running the script ```tools/sem_seg_cotrainingV3.py``` with its 
@@ -146,7 +146,7 @@ CUDA_VISIBLE_DEVICES=0 python tools/sem_seg_cotrainingV3.py
 --seed 100 
 --recompute_all_pseudolabels 
 --ensembles 
---mask_file /path_to_mask/mask.png
+--mask_file /tools/ego_vehicle_mask.png
 OUTPUT_DIR /path/to/save/experiment
 ```
 
